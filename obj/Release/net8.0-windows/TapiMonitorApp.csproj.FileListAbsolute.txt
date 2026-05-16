@@ -1,0 +1,6 @@
+D:\TAPIMonitor\TapiMonitorV3\obj\Release\net8.0-windows\Interop.TAPI3Lib.dll
+D:\TAPIMonitor\TapiMonitorV3\obj\Release\net8.0-windows\TapiMonitorApp.csproj.ResolveComReference.cache
+D:\TAPIMonitor\TapiMonitorV3\obj\Release\net8.0-windows\TapiMonitorApp.GeneratedMSBuildEditorConfig.editorconfig
+D:\TAPIMonitor\TapiMonitorV3\obj\Release\net8.0-windows\TapiMonitorApp.AssemblyInfoInputs.cache
+D:\TAPIMonitor\TapiMonitorV3\obj\Release\net8.0-windows\TapiMonitorApp.AssemblyInfo.cs
+D:\TAPIMonitor\TapiMonitorV3\obj\Release\net8.0-windows\TapiMonitorApp.csproj.CoreCompileInputs.cache
