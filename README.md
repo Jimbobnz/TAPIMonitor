@@ -29,6 +29,7 @@ The **TAPI Live Engine Monitor** bridges legacy telecom/PBX infrastructure with 
 
 ## Architecture Diagram
 
+'''
 +------------------------------------------------------------+
 |                  Windows Telephony (TAPI3)                 |
 |       (PBX Hardware / Virtual Driver / Line Addresses)     |
@@ -54,7 +55,7 @@ v                         v                v
 | Progress ABL     |     | Node.js / Python |     | WebSockets /     |
 | Socket Client    |     | microservice     |     | Third-Party CRM  |
 +------------------+     +------------------+     +------------------+
-
+'''
 
 ---
 
