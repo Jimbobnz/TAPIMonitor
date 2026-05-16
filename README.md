@@ -28,3 +28,62 @@ The **TAPI Live Engine Monitor** bridges legacy telecom/PBX infrastructure with 
 ---
 
 ## Architecture Diagram
+
++------------------------------------------------------------+
+|                  Windows Telephony (TAPI3)                 |
+|       (PBX Hardware / Virtual Driver / Line Addresses)     |
++----------------------------------+-------------------------+
+|
+COM Interface | (ITTAPIEventNotification)
+v
++------------------------------------------------------------+
+|                    TapiMonitorApp Engine                   |
+|  - Pattern Matching Interface Casting (ITMediaSupport)      |
+|  - Safe E_FAIL Interceptors (TryGetCallInfo)               |
++----------------------------------+-------------------------+
+|
+JSON Event Broadcast | (ISO 8601 Formatting)
+v
++------------------------------------------------------------+
+|                 Asynchronous Local TCP Server              |
+|                     (Default Port: 8080)                   |
++--------+-------------------------+----------------+--------+
+|                         |                |
+v                         v                v
++------------------+     +------------------+     +------------------+
+| Progress ABL     |     | Node.js / Python |     | WebSockets /     |
+| Socket Client    |     | microservice     |     | Third-Party CRM  |
++------------------+     +------------------+     +------------------+
+
+
+---
+
+## Installation Requirements
+
+### System Pre-requisites
+* **OS:** Windows 10, Windows 11, or Windows Server 2016/2019/2022.
+* **Framework:** .NET 8.0 or .NET 9.0 Windows Forms Runtime.
+* **Hardware Drivers:** Third-party Vendor TAPI Service Provider (TSP) drivers installed and properly configured in Windows **Phone and Modem** Options.
+
+### Build Compilation Targets
+> [!IMPORTANT]
+> Because most legacy PBX system hardware drivers run strictly on 32-bit architecture, you **must** configure your Solution Platform targeting target configuration inside Visual Studio to **`x86`**. Compiling as `Any CPU` or `x64` will cause the application to fail to instantiate the underlying `TAPIClass` COM object (`REGDB_E_CLASSNOTREG`).
+
+1. Open the project in Visual Studio.
+2. Change the Build Configuration dropdown from `Any CPU` to **`x86`**.
+3. Rebuild the solution.
+
+---
+
+## Configuration Guide
+
+### Registry Keys (Run at Windows Startup)
+When enabled via the UI context menu, the application registers its fully qualified path within the current user workspace hive:
+* **Hive Path:** `HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Run`
+* **Key Name:** `TapiMonitorApp`
+* **Type:** `REG_SZ`
+
+### Working Directory Override Note
+To prevent path resolution crashes when Windows initializes the program at system boot (which defaults execution contexts to `C:\Windows\System32`), the bootstrapper forces the process runtime boundary directory back to the executable layout source via:
+```csharp
+Environment.CurrentDirectory = AppDomain.CurrentDomain.BaseDirectory;
