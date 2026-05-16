@@ -29,7 +29,7 @@ The **TAPI Live Engine Monitor** bridges legacy telecom/PBX infrastructure with 
 
 ## Architecture Diagram
 
-'''
+```{r chunk-label, include=FALSE}
 +------------------------------------------------------------+
 |                  Windows Telephony (TAPI3)                 |
 |       (PBX Hardware / Virtual Driver / Line Addresses)     |
@@ -55,7 +55,7 @@ v                         v                v
 | Progress ABL     |     | Node.js / Python |     | WebSockets /     |
 | Socket Client    |     | microservice     |     | Third-Party CRM  |
 +------------------+     +------------------+     +------------------+
-'''
+```
 
 ---
 
@@ -88,3 +88,53 @@ When enabled via the UI context menu, the application registers its fully qualif
 To prevent path resolution crashes when Windows initializes the program at system boot (which defaults execution contexts to `C:\Windows\System32`), the bootstrapper forces the process runtime boundary directory back to the executable layout source via:
 ```csharp
 Environment.CurrentDirectory = AppDomain.CurrentDomain.BaseDirectory;
+
+API & Event Reference
+All network stream communication emits structural JSON string buffers terminating with a clean newline character (\n) for stream chunk boundaries.
+
+1. Incoming Call (OnIncomingCall)
+Emitted immediately when a telephone line captures an offering loop packet flag.
+
+JSON
+{
+  "Type": "OnIncomingCall",
+  "Timestamp": "2026-05-16T11:17:35.243000Z",
+  "Data": {
+    "CallID": 4729104,
+    "CallerNumber": "5551234567",
+    "CallerName": "John Doe",
+    "CalledNumber": "5559876543",
+    "CalledName": "Main Support Line",
+    "StartTime": "2026-05-16T11:17:35"
+  }
+}
+2. Call Connected (OnCallConnected)
+Emitted the instant the agent answers the call or the line links into active channels.
+
+JSON
+{
+  "Type": "OnCallConnected",
+  "Timestamp": "2026-05-16T11:17:42.112000Z",
+  "Data": {
+    "CallID": 4729104,
+    "CallerNumber": "5551234567",
+    "ConnectedTime": "2026-05-16T11:17:42",
+    "DurationBeforeAnswer": 6.87
+  }
+}
+3. Call Ended (OnCallEnded)
+Emitted upon call termination/hang-up.
+
+JSON
+{
+  "Type": "OnCallEnded",
+  "Timestamp": "2026-05-16T11:19:15.554000Z",
+  "Data": {
+    "CallID": 4729104,
+    "CallerNumber": "5551234567",
+    "StartTime": "2026-05-16T11:17:35",
+    "EndTime": "2026-05-16T11:19:15",
+    "TotalDuration": 100.31
+  }
+}
+Client Connection Examples
