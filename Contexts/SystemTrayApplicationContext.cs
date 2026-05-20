@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Drawing;
 using System.Windows.Forms;
-using TapiMonitorApp.Helpers;
+using Microsoft.Win32;
 using TapiMonitorApp.Networking;
 using TapiMonitorApp.Telephony;
 using TapiMonitorApp.UI;
-using static TapiMonitorApp.Networking.LocalTcpServer;
 
 namespace TapiMonitorApp.Contexts
 {
@@ -17,10 +16,22 @@ namespace TapiMonitorApp.Contexts
         private TapiEngine? _tapiEngine;
         private bool _showToasterNotifications = true;
 
+        private const string RegistryKeyPath = @"SOFTWARE\TapiMonitorApp";
+
         public SystemTrayApplicationContext()
         {
+            RefreshNotificationPreference();
             InitializeComponents();
             StartServices();
+        }
+
+        private void RefreshNotificationPreference()
+        {
+            using (RegistryKey key = Registry.CurrentUser.OpenSubKey(RegistryKeyPath))
+            {
+                string savedSetting = key?.GetValue("ShowToasterNotifications")?.ToString() ?? "True";
+                _showToasterNotifications = !savedSetting.Equals("False", StringComparison.OrdinalIgnoreCase);
+            }
         }
 
         private void InitializeComponents()
@@ -29,34 +40,14 @@ namespace TapiMonitorApp.Contexts
 
             ContextMenuStrip contextMenu = new ContextMenuStrip();
             ToolStripMenuItem showLogsItem = new ToolStripMenuItem("View Verbose Logs", null, ShowLogs_Click);
+            ToolStripMenuItem settingsItem = new ToolStripMenuItem("Configuration Settings...", null, Settings_Click);
             ToolStripMenuItem clientCountItem = new ToolStripMenuItem("Active Clients: 0") { Enabled = false };
-            ToolStripMenuItem exitItem = new ToolStripMenuItem("Exit Application", null, Exit_Click);
+            ToolStripMenuItem exitItem = new ToolStripMenuItem("Quit", null, Exit_Click);
 
-            // 1. Define the Startup Toggle Item
-            var startupMenuItem = new ToolStripMenuItem("Run at Windows Startup")
-            {
-                CheckOnClick = true,
-                Checked = StartupHelper.IsConfiguredForStartup()
-            };
-            startupMenuItem.Click += (sender, e) => StartupHelper.SetRunAtStartup(startupMenuItem.Checked);
-
-            // 2. Define the Toaster Pop-ups Toggle Item
-            var toasterMenuItem = new ToolStripMenuItem("Enable Notification Pop-ups")
-            {
-                CheckOnClick = true,
-                Checked = _showToasterNotifications // Defaults to checked/true
-            };
-            toasterMenuItem.Click += (sender, e) =>
-            {
-                _showToasterNotifications = toasterMenuItem.Checked;
-                // Explicitly scoped to LocalTcpServer.LogType to fix compiler error CS0103
-                Log($"Notification pop-ups have been {(_showToasterNotifications ? "enabled" : "disabled")}.", LocalTcpServer.LogType.Info);
-            };
-
-            // 3. Assemble the items onto the context menu in a clean visual layout
+            // Assemble streamlined items into context menu layout structure
             contextMenu.Items.Add(showLogsItem);
-            contextMenu.Items.Add(startupMenuItem);
-            contextMenu.Items.Add(toasterMenuItem);
+            contextMenu.Items.Add(settingsItem);
+            contextMenu.Items.Add(new ToolStripSeparator());
             contextMenu.Items.Add(clientCountItem);
             contextMenu.Items.Add(new ToolStripSeparator());
             contextMenu.Items.Add(exitItem);
@@ -80,10 +71,23 @@ namespace TapiMonitorApp.Contexts
             };
         }
 
+        private void Settings_Click(object? sender, EventArgs e)
+        {
+            using (SettingsForm form = new SettingsForm())
+            {
+                if (form.ShowDialog() == DialogResult.OK)
+                {
+                    // Pull down the checkbox updates locally right away
+                    RefreshNotificationPreference();
+
+                    Log("Configuration settings updated successfully.", LocalTcpServer.LogType.Success);
+                    Log("Note: If you altered the Port or Max Connection values, please select Quit and restart the monitor application to apply network changes.", LocalTcpServer.LogType.Warning);
+                }
+            }
+        }
+
         private void Log(string message, LocalTcpServer.LogType type)
         {
-            // FIX: Removed the invalid (LogForm.LogType) cast. 
-            // We pass the type straight through since AppendLog already accepts LocalTcpServer.LogType!
             _logForm?.AppendLog($"[Tray] {message}", type);
         }
 
@@ -102,7 +106,7 @@ namespace TapiMonitorApp.Contexts
 
         private void DisplayToastAlert(string title, string text)
         {
-            // Intercept hook: Exit early if the user turned off pop-ups via the menu toggle
+            // Correctly handles the user configuration updated via the Settings dialog
             if (!_showToasterNotifications) return;
 
             if (_notifyIcon != null)

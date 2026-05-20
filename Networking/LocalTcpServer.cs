@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using TapiMonitorApp.Models;
+using Microsoft.Win32; // Required for Registry access
 
 namespace TapiMonitorApp.Networking
 {
@@ -33,18 +34,13 @@ namespace TapiMonitorApp.Networking
         /// </summary>
         public LocalTcpServer()
         {
-            // 1. Parse Port Setting with a fallback default of 1471
-            string portSetting = ConfigurationManager.AppSettings["TcpServerPort"];
-            if (!int.TryParse(portSetting, out _port))
-            {
-                _port = 1471;
-            }
+            const string registryKeyPath = @"SOFTWARE\TapiMonitorApp";
 
-            // 2. Parse Max Connections Setting with a fallback default of 10
-            string maxConnSetting = ConfigurationManager.AppSettings["TcpMaxConnections"];
-            if (!int.TryParse(maxConnSetting, out _maxConnections))
+            using (RegistryKey key = Registry.CurrentUser.OpenSubKey(registryKeyPath))
             {
-                _maxConnections = 10;
+                // Extract values or use the system defaults natively
+                _port = (key?.GetValue("TcpServerPort") is int p) ? p : 1471;
+                _maxConnections = (key?.GetValue("TcpMaxConnections") is int m) ? m : 10;
             }
         }
 
