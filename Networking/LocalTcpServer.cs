@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Configuration; // NEW: Required assembly reference
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -12,29 +13,51 @@ namespace TapiMonitorApp.Networking
 {
     public class LocalTcpServer
     {
-        private readonly int _port = 1471;
         private TcpListener? _listener;
-        private readonly ConcurrentDictionary<Guid, TcpClient> _clients = new();
+        private readonly ConcurrentDictionary<Guid, TcpClient> _clients = new ConcurrentDictionary<Guid, TcpClient>();
         private CancellationTokenSource? _cts;
         private int _pingCounter = 0;
         private System.Threading.Timer? _pingTimer;
+
+        // Configuration values read out of App.config
+        private readonly int _port;
+        private readonly int _maxConnections;
 
         public event Action<string, LogType>? OnLog;
         public int ActiveClientCount => _clients.Count;
 
         public enum LogType { Success, Error, Warning, Event, Tapi, Info }
 
+        /// <summary>
+        /// Initializes the server by pulling configuration values straight from App.config settings.
+        /// </summary>
+        public LocalTcpServer()
+        {
+            // 1. Parse Port Setting with a fallback default of 1471
+            string portSetting = ConfigurationManager.AppSettings["TcpServerPort"];
+            if (!int.TryParse(portSetting, out _port))
+            {
+                _port = 1471;
+            }
+
+            // 2. Parse Max Connections Setting with a fallback default of 10
+            string maxConnSetting = ConfigurationManager.AppSettings["TcpMaxConnections"];
+            if (!int.TryParse(maxConnSetting, out _maxConnections))
+            {
+                _maxConnections = 10;
+            }
+        }
+
         public void Start()
         {
             _cts = new CancellationTokenSource();
-            _listener = new TcpListener(IPAddress.Loopback, _port); // Localhost only
+
+            _listener = new TcpListener(IPAddress.Loopback, _port);
             _listener.Start();
-            
-            Log("TCP Server started on localhost:1471", LogType.Success);
+
+            Log($"TCP Server started via App.config configuration. Listening on port: {_port}. Connection cap: {_maxConnections}.", LogType.Success);
 
             Task.Run(() => AcceptClientsAsync(_cts.Token));
-            
-            // Setup 30-second heartbeat ping
             _pingTimer = new System.Threading.Timer(SendPing, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
         }
 
@@ -46,10 +69,10 @@ namespace TapiMonitorApp.Networking
 
             foreach (var client in _clients.Values)
             {
-                client.Close();
+                try { client.Close(); } catch { }
             }
             _clients.Clear();
-            Log("TCP Server stopped.", LogType.Info);
+            Log("TCP Server stopped gracefully.", LogType.Info);
         }
 
         private async Task AcceptClientsAsync(CancellationToken token)
@@ -60,12 +83,32 @@ namespace TapiMonitorApp.Networking
                 {
                     if (_listener == null) break;
                     TcpClient client = await _listener.AcceptTcpClientAsync(token);
+
+                    var remoteEndPoint = client.Client.RemoteEndPoint as IPEndPoint;
+                    if (remoteEndPoint == null)
+                    {
+                        client.Close();
+                        continue;
+                    }
+
+                    if (_clients.Count >= _maxConnections)
+                    {
+                        client.Close();
+                        Log($"Rejected connection from {remoteEndPoint}. Server limit of {_maxConnections} clients reached.", LogType.Warning);
+                        continue;
+                    }
+
+                    if (!IPAddress.IsLoopback(remoteEndPoint.Address))
+                    {
+                        client.Close();
+                        Log($"Blocked external network address request: {remoteEndPoint.Address}", LogType.Warning);
+                        continue;
+                    }
+
                     Guid clientId = Guid.NewGuid();
                     _clients.TryAdd(clientId, client);
-                    
-                    Log($"Client connected from {client.Client.RemoteEndPoint}. Total: {_clients.Count}", LogType.Info);
-                    
-                    // Handle retention/disconnection monitoring per client asynchronously
+                    Log($"Client connected from {remoteEndPoint}. Total active: {_clients.Count}", LogType.Info);
+
                     _ = Task.Run(() => MonitorClientConnection(clientId, client, token), token);
                 }
                 catch (OperationCanceledException) when (token.IsCancellationRequested) { break; }
@@ -80,21 +123,23 @@ namespace TapiMonitorApp.Networking
         {
             try
             {
-                byte[] buffer = new byte[1024];
+                byte[] trashBuffer = new byte[1024];
                 NetworkStream stream = client.GetStream();
-                // Keep reading to detect client disconnection
-                while (!token.IsCancellationRequested)
+
+                while (!token.IsCancellationRequested && client.Connected)
                 {
-                    int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, token);
-                    if (bytesRead == 0) break; // Client disconnected
+                    int bytesRead = await stream.ReadAsync(trashBuffer, 0, trashBuffer.Length, token);
+                    if (bytesRead == 0) break;
                 }
             }
             catch { }
             finally
             {
-                _clients.TryRemove(id, out _);
-                client.Close();
-                Log($"Client disconnected. Remaining: {_clients.Count}", LogType.Info);
+                if (_clients.TryRemove(id, out var removedClient))
+                {
+                    removedClient.Close();
+                    Log($"Client disconnected. Remaining: {_clients.Count}", LogType.Info);
+                }
             }
         }
 
@@ -117,7 +162,7 @@ namespace TapiMonitorApp.Networking
                         if (_clients.TryRemove(kvp.Key, out var deadClient))
                         {
                             deadClient.Close();
-                            Log($"Removed unresponsive client. Total: {_clients.Count}", LogType.Warning);
+                            Log($"Removed unresponsive client. Active: {_clients.Count}", LogType.Warning);
                         }
                     }
                 });
@@ -137,7 +182,7 @@ namespace TapiMonitorApp.Networking
                     ActiveClients = _clients.Count
                 }
             };
-            
+
             Log($"Broadcasting PING #{_pingCounter}", LogType.Info);
             Broadcast(pingEvent.ToJson());
         }

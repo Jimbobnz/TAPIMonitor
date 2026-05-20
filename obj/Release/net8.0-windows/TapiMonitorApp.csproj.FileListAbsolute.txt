@@ -4,3 +4,15 @@ D:\TAPIMonitor\TapiMonitorV3\obj\Release\net8.0-windows\TapiMonitorApp.Generated
 D:\TAPIMonitor\TapiMonitorV3\obj\Release\net8.0-windows\TapiMonitorApp.AssemblyInfoInputs.cache
 D:\TAPIMonitor\TapiMonitorV3\obj\Release\net8.0-windows\TapiMonitorApp.AssemblyInfo.cs
 D:\TAPIMonitor\TapiMonitorV3\obj\Release\net8.0-windows\TapiMonitorApp.csproj.CoreCompileInputs.cache
+D:\TAPIMonitor\TapiMonitorV3\bin\Release\net8.0-windows\TapiMonitorApp.exe
+D:\TAPIMonitor\TapiMonitorV3\bin\Release\net8.0-windows\TapiMonitorApp.deps.json
+D:\TAPIMonitor\TapiMonitorV3\bin\Release\net8.0-windows\TapiMonitorApp.runtimeconfig.json
+D:\TAPIMonitor\TapiMonitorV3\bin\Release\net8.0-windows\TapiMonitorApp.dll
+D:\TAPIMonitor\TapiMonitorV3\bin\Release\net8.0-windows\TapiMonitorApp.pdb
+D:\TAPIMonitor\TapiMonitorV3\bin\Release\net8.0-windows\Interop.TAPI3Lib.dll
+D:\TAPIMonitor\TapiMonitorV3\obj\Release\net8.0-windows\TapiMonitorApp.sourcelink.json
+D:\TAPIMonitor\TapiMonitorV3\obj\Release\net8.0-windows\TapiMonitorApp.dll
+D:\TAPIMonitor\TapiMonitorV3\obj\Release\net8.0-windows\refint\TapiMonitorApp.dll
+D:\TAPIMonitor\TapiMonitorV3\obj\Release\net8.0-windows\TapiMonitorApp.pdb
+D:\TAPIMonitor\TapiMonitorV3\obj\Release\net8.0-windows\TapiMonitorApp.genruntimeconfig.cache
+D:\TAPIMonitor\TapiMonitorV3\obj\Release\net8.0-windows\ref\TapiMonitorApp.dll
